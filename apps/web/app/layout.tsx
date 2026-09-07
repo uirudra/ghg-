@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { SelectionProvider } from "@/components/SelectionContext";
+import { BackendWarmup } from "@/components/BackendWarmup";
 
 const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
 const body = Inter({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-body" });
@@ -20,10 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-base font-body text-ink">
         <SelectionProvider>
           <div className="pointer-events-none fixed inset-0 bg-grid bg-[size:48px_48px] opacity-40" />
-          <div className="relative">
-            <Nav />
-            <main>{children}</main>
-          </div>
+          <BackendWarmup>
+            <div className="relative">
+              <Nav />
+              <main>{children}</main>
+            </div>
+          </BackendWarmup>
         </SelectionProvider>
       </body>
     </html>
