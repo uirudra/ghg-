@@ -9,6 +9,7 @@ const GRACE_MS = 1100;
 const POLL_INTERVAL_MS = 2500;
 const ATTEMPT_TIMEOUT_MS = 4000;
 const SKIP_AFTER_MS = 12000;
+const DIAGNOSTIC_AFTER_ATTEMPTS = 6; // ~15-20s of consecutive failures
 
 const FACTS = [
   "OCO-2 measures column CO₂ across the globe daily, at roughly 0.5° × 0.625° resolution.",
@@ -28,6 +29,8 @@ export function BackendWarmup({ children }: { children: ReactNode }) {
   const [factIndex, setFactIndex] = useState(0);
   const [elapsed, setElapsed] = useState(0);
   const [canSkip, setCanSkip] = useState(false);
+  const [failCount, setFailCount] = useState(0);
+  const [lastError, setLastError] = useState<string | null>(null);
   // Kept mounted (separately from `phase`) until its own exit animation
   // finishes — flipping straight off `phase === "ready"` would unmount the
   // overlay in the same render that triggers the fade-out effect, so the
@@ -41,26 +44,39 @@ export function BackendWarmup({ children }: { children: ReactNode }) {
       if (!cancelled) setPhase((p) => (p === "checking" ? "waiting" : p));
     }, GRACE_MS);
 
-    async function attempt(): Promise<boolean> {
+    async function attempt(): Promise<{ ok: boolean; error?: string }> {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
       try {
         const res = await fetch(`${API_URL}/health`, { signal: controller.signal, cache: "no-store" });
-        return res.ok;
-      } catch {
-        return false;
+        if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+        return { ok: true };
+      } catch (err) {
+        // A generic "Failed to fetch"/TypeError here almost always means either
+        // a CORS rejection or nothing listening at API_URL at all (e.g.
+        // NEXT_PUBLIC_API_URL wasn't baked into the build) — the browser
+        // deliberately hides the real reason from JS for CORS failures, so
+        // this is as specific as we can get.
+        const message = err instanceof Error ? err.message : String(err);
+        return { ok: false, error: message };
       } finally {
         clearTimeout(t);
       }
     }
 
     async function loop() {
+      let attempts = 0;
       while (!cancelled) {
-        const ok = await attempt();
-        if (ok) {
+        const result = await attempt();
+        attempts += 1;
+        if (result.ok) {
           clearTimeout(graceTimer);
           if (!cancelled) setPhase("ready");
           return;
+        }
+        if (!cancelled) {
+          setFailCount(attempts);
+          setLastError(result.error ?? "unknown error");
         }
         await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
       }
@@ -132,6 +148,26 @@ export function BackendWarmup({ children }: { children: ReactNode }) {
                 <span className="text-faint">Meanwhile — </span>
                 {FACTS[factIndex]}
               </div>
+
+              {failCount >= DIAGNOSTIC_AFTER_ATTEMPTS && (
+                <div className="max-w-md rounded-lg border border-warn/30 bg-warn/[0.06] px-4 py-3 text-left font-mono text-[11px] leading-relaxed text-warn">
+                  <div>
+                    {failCount} attempts to reach the API have failed — this is usually a deployment config
+                    issue, not just a slow cold start:
+                  </div>
+                  <div className="mt-1.5 text-muted">
+                    URL: <span className="text-warn">{API_URL}/health</span>
+                  </div>
+                  <div className="text-muted">
+                    Last error: <span className="text-warn">{lastError}</span>
+                  </div>
+                  <div className="mt-1.5 text-muted">
+                    If URL still says localhost, `NEXT_PUBLIC_API_URL` wasn&apos;t baked into this build — set it
+                    and redeploy the web service. Otherwise check the API&apos;s `API_CORS_ORIGINS` allows this
+                    site&apos;s origin.
+                  </div>
+                </div>
+              )}
 
               {canSkip && (
                 <button
