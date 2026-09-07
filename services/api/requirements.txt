@@ -1,8 +1,8 @@
-fastapi==0.115.6
+fastapi==0.140.13
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.1
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 motor>=3.6.0
 pymongo>=4.9,<5
 certifi
@@ -10,6 +10,6 @@ numpy
 httpx==0.28.1
 groq==0.13.1
 google-generativeai==0.8.3
-orjson==3.10.13
+orjson==3.11.6
 tensorflow==2.20.0
-pytest==8.3.4
+pytest==9.0.3
