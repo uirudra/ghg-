@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./services/api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./services/api/app/ml/checkpoints:/app/app/ml/checkpoints
+
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api

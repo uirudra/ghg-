@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: ghg-nexus-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: services/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.2
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: ghg_nexus
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
+      # Set to the deployed web service's origin, e.g. https://ghg-nexus-web.onrender.com
+      # (Render can't self-reference a sibling service's URL as a plain env var
+      # template here, so this is set once in the dashboard after first deploy.)
+      - key: API_CORS_ORIGINS
+        sync: false
+
+  - type: web
+    name: ghg-nexus-web
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: apps/web
+    buildCommand: npm install && npm run build
+    startCommand: npm run start -- -p $PORT
+    envVars:
+      # Set to the deployed api service's origin, e.g. https://ghg-nexus-api.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        sync: false

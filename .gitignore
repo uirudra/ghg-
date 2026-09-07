@@ -1,0 +1,21 @@
+.env
+.env.local
+*.env
+
+# Python
+services/api/.venv/
+services/api/**/__pycache__/
+*.pyc
+
+# Node
+apps/web/node_modules/
+apps/web/.next/
+apps/web/out/
+npm-debug.log*
+
+# ML artifacts — the trained .weights.h5 checkpoint (~400KB) IS committed on
+# purpose: it lets a fresh deploy serve fast, pretrained inference immediately
+# instead of a ~4 minute cold-training run on first request.
+
+# OS
+.DS_Store
